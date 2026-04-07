@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon Move Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 35px;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #999;
+      font-size: 0.95em;
+    }
+
+    .search-section {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    #moveSelect {
+      flex: 1;
+      padding: 14px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1em;
+      transition: all 0.3s ease;
+    }
+
+    #moveSelect:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #result {
+      min-height: 50px;
+    }
+
+    .move-card {
+      background: #f8f9fa;
+      border-left: 5px solid #667eea;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 15px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .move-name {
+      font-size: 1.3em;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .move-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 12px;
+    }
+
+    .info-item {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .info-label {
+      font-size: 0.85em;
+      color: #999;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      font-size: 1.1em;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .error-message {
+      background: #fee;
+      color: #c33;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid #c33;
+    }
+
+    .loading {
+      text-align: center;
+      color: #667eea;
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 25px;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .move-info {
+        grid-template-columns: 1fr;
+      }
+
+      .search-section {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎮 Pokemon Move Viewer</h1>
+    <p>ค้นหาและดูรายละเอียดของท่าการต่อสู้</p>
+  </div>
+
+  <div class="search-section">
+    <input type="text" id="moveSelect" placeholder="พิมพ์ชื่อท่า เช่น Tackle, Flame Burst..." list="moveSuggestions" autocomplete="off">
+    <datalist id="moveSuggestions"></datalist>
+    <button onclick="loadMove()">🔍 แสดง</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+  const select = document.getElementById("moveSelect");
+  const datalist = document.getElementById("moveSuggestions");
+  let allMoves = []; // เก็บ moves ทั้งหมด
+
+  // โหลดรายชื่อท่าทั้งหมด
+  async function loadMoves() {
+    try {
+      const res = await fetch("https://pokeapi.co/api/v2/move?limit=1000");
+      if (!res.ok) throw new Error(`API Error: ${res.status}`);
+      const data = await res.json();
+
+      let moves = data.results;
+
+      // ❌ ตัดชื่อแปลก ๆ ออกก่อน
+      moves = moves.filter(move =>
+        !move.name.includes("--physical") &&
+        !move.name.includes("--special") 
+      );
+
+      // ☑️ ตัด shadow type ออก + จำกัด concurrency
+      const batchFetch = async (arr, batchSize = 10) => {
+        const results = [];
+        for (let i = 0; i < arr.length; i += batchSize) {
+          const batch = arr.slice(i, i + batchSize);
+          const batchResult = await Promise.all(batch.map(async move => {
+            try {
+              const res = await fetch(move.url);
+              if (!res.ok) return null;
+              const data = await res.json();
+              return { ...move, type: data.type };
+            } catch {
+              return null;
+            }
+          }));
+          results.push(...batchResult);
+        }
+        return results;
+      };
+
+      moves = await batchFetch(moves, 10);
+      moves = moves.filter(move => move && move.type.name !== "shadow");
+
+      allMoves = moves; // เก็บไว้ใช้ในการค้นหา
+      
+      datalist.innerHTML = "";
+
+      moves.forEach(move => {
+        const option = document.createElement("option");
+        const displayName = move.name.replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        option.value = displayName;
+        option.textContent = displayName;
+        datalist.appendChild(option);
+      });
+      select.placeholder = "ค้นหาท่า...";
+      console.log("✅ โหลดท่าสำเร็จ");
+    } catch (error) {
+      console.error("❌ เกิดข้อผิดพลาด:", error);
+      select.placeholder = "เกิดข้อผิดพลาด: " + error.message;
+      document.getElementById("result").innerHTML = `<p style="color: red;">⚠️ ไม่สามารถโหลดข้อมูลได้: ${error.message}</p>`;
+    }
+  }
+
+  loadMoves();
+
+  // แปลง move name ให้เป็น title case
+  function formatMoveName(name) {
+    return name.replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  // แปลข้อความเป็นไทยโดยใช้ MyMemory API
+  async function translateToThai(text) {
+    try {
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|th`);
+      const data = await response.json();
+      if (data.responseStatus === 200) {
+        return data.responseData.translatedText;
+      }
+      return text; // ถ้าแปลไม่ได้ให้ใช้ต้นฉบับ
+    } catch (error) {
+      console.error("❌ แปลไม่ได้:", error);
+      return text;
+    }
+  }
+
+  // เมื่อเลือก option จาก datalist ให้อัปเดต input value
+  select.addEventListener('input', (e) => {
+    const selectedOption = Array.from(datalist.options).find(opt => opt.value === e.target.value);
+    if (selectedOption) {
+      select.value = formatMoveName(e.target.value);
+    }
+  });
+  const damageMap = {
+    physical: "กายภาพ",
+    special: "เวทมนตร์",
+    status: "สถานะ"
+  };
+
+  // โหลดรายละเอียดท่า
+  async function loadMove() {
+    try {
+      let moveName = select.value.trim();
+      if (!moveName) {
+        alert("⚠️ กรุณาพิมพ์ชื่อท่า");
+        return;
+      }
+
+      // แปลง "Swords Dance" กลับเป็น "swords-dance" เพื่อค้นหา
+      moveName = moveName.toLowerCase().replace(/ /g, '-');
+
+      // ค้นหา move จากชื่อ
+      const move = allMoves.find(m => m.name === moveName);
+      if (!move) {
+        alert("⚠️ ไม่พบท่านี้");
+        return;
+      }
+
+      const url = move.url;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`API Error: ${res.status}`);
+      const data = await res.json();
+
+      let effect = "";
+
+      data.effect_entries.forEach(e => {
+        if (e.language.name === "en") {
+          effect = e.effect;
+        }
+      });
+
+      // แก้ placeholder
+      if (data.effect_chance !== null) {
+        effect = effect.replace("$effect_chance", data.effect_chance);
+      }
+
+      // แปลเป็นไทย
+      const effectThai = await translateToThai(effect);
+
+      const typeColor = {
+        'normal': '#A8A878',
+        'fire': '#F08030',
+        'water': '#6890F0',
+        'electric': '#F8D030',
+        'grass': '#78C850',
+        'ice': '#98D8D8',
+        'fighting': '#C03028',
+        'poison': '#A040A0',
+        'ground': '#E0C068',
+        'flying': '#A890F0',
+        'psychic': '#F85888',
+        'bug': '#A8B820',
+        'rock': '#B8A038',
+        'ghost': '#705898',
+        'dragon': '#7038F8',
+        'dark': '#705848',
+        'steel': '#B8B8D0',
+        'fairy': '#EE99AC'
+      };
+
+      const typeName = data.type.name.toLowerCase();
+      const color = typeColor[typeName] || '#667eea';
+
+      document.getElementById("result").innerHTML = `
+        <div class="move-card">
+          <div class="move-name">⚡ ${formatMoveName(data.name)}</div>
+          <div style="border-left: 4px solid ${color}; padding-left: 12px; margin: 12px 0;">
+            <span class="type-badge" style="background: ${color}; display: inline-block; margin-bottom: 10px;">
+              ${data.type.name.toUpperCase()}
+            </span>
+          </div>
+          <div class="move-info">
+            <div class="info-item">
+              <div class="info-label">💪 ความแรง</div>
+              <div class="info-value">${data.power ?? 'N/A'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">🎯 ความแม่นยำ</div>
+              <div class="info-value">${data.accuracy ?? '∞'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">⚔️ ประเภท</div>
+              <div class="info-value">${damageMap[data.damage_class.name]}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">📊 PP</div>
+              <div class="info-value">${data.pp}</div>
+            </div>
+          </div>
+          <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
+            <div style="font-weight: 600; color: #667eea; margin-bottom: 8px; font-size: 0.95em;">📝 คำอธิบาย</div>
+            <div style="color: #555; line-height: 1.6; font-size: 0.95em;">${effect}</div>
+          </div>
+          <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
+            <div style="font-weight: 600; color: #764ba2; margin-bottom: 8px; font-size: 0.95em;">🌐 แบบภาษาไทย</div>
+            <div style="color: #555; line-height: 1.6; font-size: 0.95em;">${effectThai}</div>
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      console.error("❌ เกิดข้อผิดพลาด:", error);
+      document.getElementById("result").innerHTML = `<div class="error-message">⚠️ ไม่สามารถโหลดข้อมูลได้: ${error.message}</div>`;
+    }
+  }
+</script>
+
+</body>
+</html>
