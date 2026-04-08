@@ -147,15 +147,32 @@
       font-weight: 600;
     }
 
-    .type-badge {
+    .type-badge,
+    .damage-badge {
       display: inline-block;
       padding: 6px 12px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border-radius: 20px;
       font-size: 0.9em;
       font-weight: 600;
       margin-top: 8px;
+    }
+
+    .type-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .damage-badge {
+      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    }
+
+    .badge-row {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
     }
 
     .error-message {
@@ -270,7 +287,7 @@
   });
   const damageMap = {
     physical: "กายภาพ",
-    special: "เวทมนตร์",
+    special: "พิเศษ",
     status: "สถานะ"
   };
 
@@ -318,16 +335,43 @@
         'fairy': '#EE99AC'
       };
 
+      const typeEmoji = {
+        'normal': '✨',
+        'fire': '🔥',
+        'water': '💧',
+        'electric': '⚡',
+        'grass': '🌿',
+        'ice': '❄️',
+        'fighting': '🥊',
+        'poison': '☠️',
+        'ground': '🌍',
+        'flying': '🕊️',
+        'psychic': '🔮',
+        'bug': '🐛',
+        'rock': '🪨',
+        'ghost': '👻',
+        'dragon': '🐉',
+        'dark': '🌑',
+        'steel': '⚙️',
+        'fairy': '🧚'
+      };
+
       const typeName = data.type.toLowerCase();
       const color = typeColor[typeName] || '#667eea';
+      const moveEmoji = typeEmoji[typeName] || '⚡';
 
       document.getElementById("result").innerHTML = `
         <div class="move-card">
-          <div class="move-name">⚡ ${formatMoveName(data.name)}</div>
+          <div class="move-name">${moveEmoji} ${formatMoveName(data.name)}</div>
           <div style="border-left: 4px solid ${color}; padding-left: 12px; margin: 12px 0;">
-            <span class="type-badge" style="background: ${color}; display: inline-block; margin-bottom: 10px;">
-              ${data.type.toUpperCase()}
-            </span>
+            <div class="badge-row">
+              <span class="type-badge" style="background: ${color};">
+                ${data.type.toUpperCase()}
+              </span>
+              <span class="damage-badge">
+                ${damageMap[data.damage_class] ? damageMap[data.damage_class] : 'N/A'}
+              </span>
+            </div>
           </div>
           <div class="move-info">
             <div class="info-item">
@@ -335,20 +379,16 @@
               <div class="info-value">${data.power ?? 'N/A'}</div>
             </div>
             <div class="info-item">
-              <div class="info-label">🎯 ความแม่นยำ</div>
+              <div class="info-label">🎯 แม่นยำ</div>
               <div class="info-value">${data.accuracy ?? '∞'}</div>
             </div>
             <div class="info-item">
               <div class="info-label">📊 PP</div>
               <div class="info-value">${data.pp ?? 'N/A'}</div>
             </div>
-            <div class="info-item">
-              <div class="info-label">🎯 ประเภทท่า</div>
-              <div class="info-value">${damageMap[data.damage_class] ?? 'N/A'}</div>
-            </div>
           </div>
           <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
-            <div style="font-weight: 600; color: #764ba2; margin-bottom: 8px; font-size: 0.95em;">🌐 แบบภาษาไทย</div>
+            <div style="font-weight: 600; color: #764ba2; margin-bottom: 8px; font-size: 0.95em;">🌐 คำอธิบาย</div>
             <div style="color: #555; line-height: 1.6; font-size: 0.95em;">${effectThai}</div>
           </div>
         </div>
