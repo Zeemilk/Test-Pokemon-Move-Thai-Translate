@@ -216,43 +216,11 @@
   // โหลดรายชื่อท่าทั้งหมด
   async function loadMoves() {
     try {
-      const res = await fetch("https://pokeapi.co/api/v2/move?limit=1000");
+      const res = await fetch("moves_th.json");
       if (!res.ok) throw new Error(`API Error: ${res.status}`);
-      const data = await res.json();
-
-      let moves = data.results;
-
-      // ❌ ตัดชื่อแปลก ๆ ออกก่อน
-      moves = moves.filter(move =>
-        !move.name.includes("--physical") &&
-        !move.name.includes("--special") 
-      );
-
-      // ☑️ ตัด shadow type ออก + จำกัด concurrency
-      const batchFetch = async (arr, batchSize = 10) => {
-        const results = [];
-        for (let i = 0; i < arr.length; i += batchSize) {
-          const batch = arr.slice(i, i + batchSize);
-          const batchResult = await Promise.all(batch.map(async move => {
-            try {
-              const res = await fetch(move.url);
-              if (!res.ok) return null;
-              const data = await res.json();
-              return { ...move, type: data.type };
-            } catch {
-              return null;
-            }
-          }));
-          results.push(...batchResult);
-        }
-        return results;
-      };
-
-      moves = await batchFetch(moves, 10);
-      moves = moves.filter(move => move && move.type.name !== "shadow");
+      const moves = await res.json();
 
       allMoves = moves; // เก็บไว้ใช้ในการค้นหา
-      
       datalist.innerHTML = "";
 
       moves.forEach(move => {
@@ -325,26 +293,9 @@
         return;
       }
 
-      const url = move.url;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`API Error: ${res.status}`);
-      const data = await res.json();
-
-      let effect = "";
-
-      data.effect_entries.forEach(e => {
-        if (e.language.name === "en") {
-          effect = e.effect;
-        }
-      });
-
-      // แก้ placeholder
-      if (data.effect_chance !== null) {
-        effect = effect.replace("$effect_chance", data.effect_chance);
-      }
-
-      // แปลเป็นไทย
-      const effectThai = await translateToThai(effect);
+      const data = move;
+      const effect = data.description_en || '-';
+      const effectThai = data.description_th || '-';
 
       const typeColor = {
         'normal': '#A8A878',
@@ -367,7 +318,7 @@
         'fairy': '#EE99AC'
       };
 
-      const typeName = data.type.name.toLowerCase();
+      const typeName = data.type.toLowerCase();
       const color = typeColor[typeName] || '#667eea';
 
       document.getElementById("result").innerHTML = `
@@ -375,7 +326,7 @@
           <div class="move-name">⚡ ${formatMoveName(data.name)}</div>
           <div style="border-left: 4px solid ${color}; padding-left: 12px; margin: 12px 0;">
             <span class="type-badge" style="background: ${color}; display: inline-block; margin-bottom: 10px;">
-              ${data.type.name.toUpperCase()}
+              ${data.type.toUpperCase()}
             </span>
           </div>
           <div class="move-info">
@@ -388,17 +339,9 @@
               <div class="info-value">${data.accuracy ?? '∞'}</div>
             </div>
             <div class="info-item">
-              <div class="info-label">⚔️ ประเภท</div>
-              <div class="info-value">${damageMap[data.damage_class.name]}</div>
-            </div>
-            <div class="info-item">
               <div class="info-label">📊 PP</div>
-              <div class="info-value">${data.pp}</div>
+              <div class="info-value">${data.pp ?? 'N/A'}</div>
             </div>
-          </div>
-          <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
-            <div style="font-weight: 600; color: #667eea; margin-bottom: 8px; font-size: 0.95em;">📝 คำอธิบาย</div>
-            <div style="color: #555; line-height: 1.6; font-size: 0.95em;">${effect}</div>
           </div>
           <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
             <div style="font-weight: 600; color: #764ba2; margin-bottom: 8px; font-size: 0.95em;">🌐 แบบภาษาไทย</div>
